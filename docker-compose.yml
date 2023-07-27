@@ -1,0 +1,66 @@
+version: '3.7'
+
+services:
+  # Omni Channel
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile 
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - redis
+    networks:
+      - omni-channel
+
+  # Servidor Web
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www 
+      - ./docker/nginx/:/etc/nginx/conf.d/
+    networks:
+      - omni-channel
+
+  # Banco de Dados
+  db:
+    image: mariadb:11.0.2
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-omni}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-userpass}
+      - MYSQL_USER=${DB_USERNAME:-username}
+    volumes:
+      - ./.docker/mariadb/dbdata:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - omni-channel
+
+  phpmyadmin:
+    image: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=db
+      - PMA_PORT=3306
+    networks:
+      - omni-channel
+
+  # Redis
+  redis:
+    image: redis:latest
+    networks:
+      - omni-channel
+
+networks:
+  omni-channel:
+    driver: bridge
